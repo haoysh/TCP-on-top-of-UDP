@@ -1,0 +1,23 @@
+Sung Ho Youn, youn
+Brian Chellman, chellman
+
+This code runs a client and a server to transfer the data from client to server
+using reliable TCP on top of java built in UDP.
+
+1. When running TCPend please use "tcp/TCPEnd" because the Makefile
+produces the class file inside the tcp folder, which is inside the src folder.
+For ex)  
+    Client - java tcp/TCPend -p <port> -s <remote-IP> -a <remote-port> -f <filename> -m <mtu> -c <sws>
+    Server - java tcp/TCPend -p <port> -m <mtu> -c <sws>"
+
+2. The server does not receive a file name from the client. Whenever we sent a
+file name to the server, it failed to create the file with the provided file
+name due to an invalid path error (even though it appeared correct). Therefore, 
+the server writes the received file data to an output file "result.txt" in the
+src folder.
+
+3. We set listening port = remote Port for the server. We weren't able to find
+a way to determine what port the client was listening on through Java's
+functions for Datagrams and Datagramsockets. 
+
+4. Makefile has to be inside the 'src/' folder for the "make" command to work.

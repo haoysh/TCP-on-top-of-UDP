@@ -1,0 +1,46 @@
+package edu.wisc.cs.sdn.vnet.rt;
+
+import edu.wisc.cs.sdn.vnet.Device;
+import edu.wisc.cs.sdn.vnet.Iface;
+
+import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.RIPv2;
+import net.floodlightcontroller.packet.UDP;
+
+import java.util.Map;
+public class RipSender implements Runnable {
+  public static final int TIMER = 10 * 1000;
+  public static final byte MAX_TTL = (byte) 16;
+  public static final String BROADCAST_MAC = "FF:FF:FF:FF:FF:FF";
+  public static final byte COMMAND_RESPONSE = 2;
+
+  private Thread senderThread;
+
+  private Map<String,Iface> interfaces;
+
+  private Router parent;
+
+  public RipSender(Map<String,Iface> ifaces, Router par) {
+    this.interfaces = ifaces;
+    this.parent = par;
+    this.senderThread = new Thread(this);
+    this.senderThread.start();
+  }
+
+  public void run() {
+    while (true) {
+      // Run every second
+      try { Thread.sleep(TIMER); }
+      catch (InterruptedException e)
+      { break; }
+
+      // Timeout entries
+      for (Iface iface : this.interfaces.values())
+      {
+        this.parent.forwardRIPPacket(iface, parent.UDP_MULTI_ADDRESS,
+            parent.BROADCAST_MAC, COMMAND_RESPONSE);
+      }
+    }
+  }
+}

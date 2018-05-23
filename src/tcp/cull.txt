@@ -1,0 +1,75 @@
+package edu.wisc.cs.sdn.vnet.rt;
+
+import edu.wisc.cs.sdn.vnet.Device;
+import edu.wisc.cs.sdn.vnet.Iface;
+
+import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.RIPv2;
+import net.floodlightcontroller.packet.RIPv2Entry;
+
+import java.util.List;
+import java.util.Iterator;
+import java.util.Collections;
+import java.util.ArrayList;
+import java.util.LinkedList;
+
+import java.lang.Integer;
+
+public class CullRoute implements Runnable {
+  public static final int TIMEOUT = 30 * 1000;
+
+  private Thread cullerThread;
+
+  private RouteTable rTable;
+
+  private Iterator<RouteEntry> it;
+
+  private RIPv2 rPacket;
+
+  public CullRoute(RouteTable table, RIPv2 packet) {
+    this.rTable = table;
+    this.rPacket = packet;
+    this.cullerThread = new Thread(this);
+    this.cullerThread.start();
+  }
+
+  public void run() {
+    while (true) {
+      // Run every second
+      try { Thread.sleep(1000); }
+      catch (InterruptedException e)
+      { break; }
+      //Can do For each loop since List is also a collection
+
+      List<Integer> entryAddress = new ArrayList<Integer>();
+
+      synchronized(this.rTable) {
+        for(it = this.rTable.getEntries().iterator(); it.hasNext();) {
+          RouteEntry entry = it.next();
+          if(entry.getGatewayAddress() == 0) {continue;}
+          if((System.currentTimeMillis() - entry.getTime()) > TIMEOUT) {
+            entryAddress.add(entry.getDestinationAddress());
+            it.remove();
+            // System.out.println("Removed entry: " + entry.toString());
+          }
+        }
+      }
+      synchronized(this.rPacket) {
+        List<RIPv2Entry> updatedEntries = new LinkedList<RIPv2Entry>();
+
+        for(Iterator<RIPv2Entry> rit = this.rPacket.getEntries().iterator(); rit.hasNext();) {
+          RIPv2Entry rentry = rit.next();
+          boolean found = false;
+          for(int i = 0; i<entryAddress.size(); i++) {
+            if(rentry.getAddress() == entryAddress.get(i)) {found = true;}
+          }
+          if(found == false) {updatedEntries.add(rentry);}
+        }
+        this.rPacket.setEntries(updatedEntries);
+        // System.out.println("Current route table:");
+        // System.out.println(this.rTable.toString());
+      }
+    }
+  }
+}
